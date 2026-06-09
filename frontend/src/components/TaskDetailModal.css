@@ -1,0 +1,271 @@
+/* ── Overlay ── */
+@keyframes overlayIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes panelIn {
+  from { opacity: 0; transform: scale(0.94) translateY(20px); filter: blur(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    filter: blur(0);   }
+}
+
+.tdm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+
+  background: rgba(8, 4, 22, 0.65);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  animation: overlayIn 0.22s ease;
+}
+
+/* ── Panel ── */
+.tdm-panel {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 28px;
+  padding: 32px 32px 28px;
+  overflow: hidden;
+  animation: panelIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Deep glass */
+  background: rgba(24, 12, 60, 0.78);
+  backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
+  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.08);
+
+  /* Layered border */
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+
+  /* Shadows + glow */
+  box-shadow:
+    0 2px 0 rgba(255,255,255,0.14) inset,
+    0 -1px 0 rgba(0,0,0,0.20) inset,
+    0 40px 100px rgba(0,0,0,0.60),
+    0 0 60px rgba(124,58,237,0.22),
+    0 0 0 1px rgba(167,139,250,0.08);
+}
+
+/* Top-left glass shine */
+.tdm-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 65%; height: 45%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.13) 0%, transparent 65%);
+  border-radius: 28px 0 60% 0;
+  pointer-events: none;
+}
+
+/* Glow orb */
+.tdm-glow {
+  position: absolute;
+  width: 300px; height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(167,139,250,0.18) 0%, transparent 70%);
+  top: -80px; right: -60px;
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tdm-panel > * { position: relative; z-index: 1; }
+
+/* ── Header ── */
+.tdm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.tdm-focus-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent-lavender);
+  background: rgba(167,139,250,0.12);
+  border: 1px solid rgba(167,139,250,0.25);
+}
+
+.tdm-close {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+.tdm-close:hover {
+  background: rgba(255,255,255,0.13);
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.22);
+}
+
+/* ── Status ── */
+.tdm-status-row { margin-bottom: 14px; }
+
+.tdm-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── Title ── */
+.tdm-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 16px;
+  word-break: break-word;
+}
+.tdm-title--done {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* ── Description ── */
+.tdm-desc-wrap {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 16px;
+  min-height: 80px;
+  margin-bottom: 20px;
+}
+.tdm-desc {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.tdm-desc--empty {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* ── Meta ── */
+.tdm-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+.tdm-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.tdm-meta-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 54px;
+}
+.tdm-meta-value {
+  color: var(--text-secondary);
+}
+
+/* ── Actions ── */
+.tdm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.tdm-act-right {
+  display: flex;
+  gap: 8px;
+}
+
+.tdm-act-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 11px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.tdm-act-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.tdm-act-toggle--done {
+  background: rgba(52,211,153,0.14);
+  border-color: rgba(52,211,153,0.28);
+  color: #6ee7b7;
+}
+.tdm-act-toggle--done:hover:not(:disabled) {
+  background: rgba(52,211,153,0.24);
+  border-color: rgba(52,211,153,0.45);
+}
+
+.tdm-act-toggle--undo {
+  background: rgba(251,191,36,0.12);
+  border-color: rgba(251,191,36,0.26);
+  color: #fde68a;
+}
+.tdm-act-toggle--undo:hover:not(:disabled) {
+  background: rgba(251,191,36,0.20);
+}
+
+.tdm-act-edit {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+  color: var(--text-secondary);
+}
+.tdm-act-edit:hover:not(:disabled) {
+  background: rgba(255,255,255,0.13);
+  color: var(--text-primary);
+}
+
+.tdm-act-delete {
+  background: rgba(248,113,113,0.10);
+  border-color: rgba(248,113,113,0.20);
+  color: #fca5a5;
+}
+.tdm-act-delete:hover:not(:disabled) {
+  background: rgba(248,113,113,0.20);
+  border-color: rgba(248,113,113,0.38);
+}
+
+/* ── Responsive ── */
+@media (max-width: 560px) {
+  .tdm-panel { padding: 24px 20px 22px; border-radius: 22px; }
+  .tdm-title { font-size: 19px; }
+  .tdm-actions { flex-direction: column; align-items: stretch; }
+  .tdm-act-toggle--done, .tdm-act-toggle--undo { justify-content: center; }
+  .tdm-act-right { justify-content: stretch; }
+  .tdm-act-right .tdm-act-btn { flex: 1; justify-content: center; }
+}
