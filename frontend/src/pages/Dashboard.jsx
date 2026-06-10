@@ -8,7 +8,6 @@ import TaskCard from '../components/TaskCard'
 import TaskModal from '../components/TaskModal'
 import TaskDetailModal from '../components/TaskDetailModal'
 import TaskListView from '../components/TaskListView'
-import TaskFocusView from '../components/TaskFocusView'
 import ViewSwitcher from '../components/ViewSwitcher'
 import DeleteConfirm from '../components/DeleteConfirm'
 import Pagination from '../components/Pagination'
@@ -23,17 +22,18 @@ export default function Dashboard() {
     fetchTasks, debouncedFetch, createTask, updateTask, deleteTask, toggleTask,
   } = useTasks()
 
-  const [search,       setSearch]       = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [page,         setPage]         = useState(1)
-  const [view,         setView]         = useState('grid')   // 'grid' | 'list' | 'focus'
-  const [modal,        setModal]        = useState(null)     // null | 'add' | task-object (edit)
-  const [detailTask,   setDetailTask]   = useState(null)     // task shown in Focus Mode detail popup
-  const [deleteId,     setDeleteId]     = useState(null)
-  const [deleteLoading,setDeleteLoading]= useState(false)
-  const [summaryStats, setSummaryStats] = useState({ total: 0, completed: 0, pending: 0 })
+  const [search,        setSearch]        = useState('')
+  const [statusFilter,  setStatusFilter]  = useState('')
+  const [page,          setPage]          = useState(1)
+  const [view,          setView]          = useState('grid') // 'grid' | 'list' | 'focus'
+  const [modal,         setModal]         = useState(null)   // null | 'add' | task-object (edit)
+  // focusState: null = closed | { task, index } = open (task=null means carousel from switcher)
+  const [focusState,    setFocusState]    = useState(null)
+  const [deleteId,      setDeleteId]      = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [summaryStats,  setSummaryStats]  = useState({ total: 0, completed: 0, pending: 0 })
 
-  // ── Summary stats ─────────────────────────────────────────
+  // ── Summary stats ──────────────────────────────────────────
   const refreshSummary = useCallback(async () => {
     try {
       const [all, done] = await Promise.all([
@@ -46,7 +46,7 @@ export default function Dashboard() {
     } catch { /* silent */ }
   }, [])
 
-  // ── Main fetch ────────────────────────────────────────────
+  // ── Main fetch ─────────────────────────────────────────────
   const load = useCallback((overrides = {}) => {
     const params = { search, status: statusFilter, page, limit: LIMIT, ...overrides }
     fetchTasks(params)
@@ -55,7 +55,7 @@ export default function Dashboard() {
 
   useEffect(() => { load() }, []) // initial load
 
-  // ── Handlers ─────────────────────────────────────────────
+  // ── Search ─────────────────────────────────────────────────
   const handleSearch = (val) => {
     setSearch(val)
     setPage(1)
@@ -63,18 +63,41 @@ export default function Dashboard() {
     refreshSummary()
   }
 
+  // ── Filter ─────────────────────────────────────────────────
   const handleFilter = (val) => {
     setStatusFilter(val)
     setPage(1)
     fetchTasks({ search, status: val, page: 1, limit: LIMIT })
   }
 
+  // ── Pagination ─────────────────────────────────────────────
   const handlePage = (p) => {
     setPage(p)
     fetchTasks({ search, status: statusFilter, page: p, limit: LIMIT })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // ── View switcher — Focus opens as modal ───────────────────
+  const handleViewChange = (v) => {
+    setView(v)
+    if (v === 'focus' && tasks.length > 0) {
+      setFocusState({ task: null, index: 0 }) // carousel from index 0
+    }
+  }
+
+  // ── Open Focus Mode from card/row click ───────────────────
+  const openFocusForTask = (task) => {
+    setFocusState({ task, index: tasks.findIndex(t => t._id === task._id) })
+  }
+
+  // ── Close Focus Mode ──────────────────────────────────────
+  const closeFocus = () => {
+    setFocusState(null)
+    // If user was in Focus view switcher mode, revert to grid so page isn't empty
+    if (view === 'focus') setView('grid')
+  }
+
+  // ── Task modal (add/edit) ─────────────────────────────────
   const handleModalSubmit = async (payload) => {
     if (modal === 'add') {
       await createTask(payload.title, payload.description)
@@ -86,14 +109,16 @@ export default function Dashboard() {
     if (modal === 'add') setPage(1)
   }
 
+  // ── Toggle ────────────────────────────────────────────────
   const handleToggle = async (id) => {
     await toggleTask(id)
     load()
-    // Update the detail modal task object if it's open for the same task
-    setDetailTask(dt => {
-      if (dt && dt._id === id) return { ...dt, status: dt.status === 'pending' ? 'completed' : 'pending' }
-      return dt
-    })
+  }
+
+  // ── Delete ────────────────────────────────────────────────
+  const handleDeleteRequest = (id) => {
+    setFocusState(null)
+    setDeleteId(id)
   }
 
   const handleDeleteConfirm = async () => {
@@ -102,25 +127,18 @@ export default function Dashboard() {
     try {
       await deleteTask(deleteId)
       setDeleteId(null)
-      setDetailTask(null)
       const newPage = tasks.length === 1 && page > 1 ? page - 1 : page
       setPage(newPage)
       load({ page: newPage })
-    } catch { /* toast already shown */ } finally {
+    } catch { /* toast shown by hook */ } finally {
       setDeleteLoading(false)
     }
   }
 
-  // Open edit modal from the detail modal
-  const handleEditFromDetail = (task) => {
-    setDetailTask(null)
+  // ── Edit triggered from inside Focus Mode modal ───────────
+  const handleEditFromFocus = (task) => {
+    setFocusState(null)
     setModal(task)
-  }
-
-  // Delete triggered from detail or card
-  const handleDeleteRequest = (id) => {
-    setDetailTask(null)
-    setDeleteId(id)
   }
 
   const greeting = () => {
@@ -129,9 +147,6 @@ export default function Dashboard() {
     if (h < 18) return 'Good afternoon'
     return 'Good evening'
   }
-
-  // Focus view uses all tasks in current page, no separate pagination
-  const showPagination = view !== 'focus'
 
   return (
     <div className="dashboard-page">
@@ -196,8 +211,7 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* View switcher */}
-            <ViewSwitcher activeView={view} onChange={setView} />
+            <ViewSwitcher activeView={view} onChange={handleViewChange} />
 
             <button className="btn-primary add-btn" onClick={() => setModal('add')}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -207,7 +221,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* ── Task content area ── */}
+          {/* ── Task content area (grid / list only — focus is always modal) ── */}
           {loading ? (
             <div className="dash-state">
               <div className="loading-grid">
@@ -226,7 +240,9 @@ export default function Dashboard() {
                 </div>
                 <h3 className="empty-title">{search || statusFilter ? 'No tasks match' : 'No tasks yet'}</h3>
                 <p className="empty-body">
-                  {search || statusFilter ? 'Try a different search or filter.' : 'Create your first task and start organising beautifully.'}
+                  {search || statusFilter
+                    ? 'Try a different search or filter.'
+                    : 'Create your first task and start organising beautifully.'}
                 </p>
                 {!search && !statusFilter && (
                   <button className="btn-primary" style={{ marginTop: 20, padding: '11px 24px' }} onClick={() => setModal('add')}>
@@ -238,13 +254,13 @@ export default function Dashboard() {
           ) : (
             <>
               {/* GRID VIEW */}
-              {view === 'grid' && (
+              {(view === 'grid' || view === 'focus') && (
                 <div className="task-grid">
                   {tasks.map((task, i) => (
                     <div key={task._id} className="fade-up" style={{ animationDelay: `${i * 0.05}s` }}>
                       <TaskCard
                         task={task}
-                        onOpen={setDetailTask}
+                        onOpen={openFocusForTask}
                         onEdit={(t) => setModal(t)}
                         onDelete={handleDeleteRequest}
                         onToggle={handleToggle}
@@ -259,7 +275,7 @@ export default function Dashboard() {
               {view === 'list' && (
                 <TaskListView
                   tasks={tasks}
-                  onOpen={setDetailTask}
+                  onOpen={openFocusForTask}
                   onEdit={(t) => setModal(t)}
                   onDelete={handleDeleteRequest}
                   onToggle={handleToggle}
@@ -267,32 +283,16 @@ export default function Dashboard() {
                 />
               )}
 
-              {/* FOCUS VIEW */}
-              {view === 'focus' && (
-                <TaskFocusView
-                  tasks={tasks}
-                  onEdit={(t) => setModal(t)}
-                  onDelete={handleDeleteRequest}
-                  onToggle={handleToggle}
-                  actionLoading={actionLoading}
-                  onAddTask={() => setModal('add')}
-                />
-              )}
-
-              {showPagination && (
-                <>
-                  <Pagination pagination={pagination} onPageChange={handlePage} />
-                  <p className="task-count-label">
-                    Showing {tasks.length} of {pagination.totalTasks} task{pagination.totalTasks !== 1 ? 's' : ''}
-                  </p>
-                </>
-              )}
+              <Pagination pagination={pagination} onPageChange={handlePage} />
+              <p className="task-count-label">
+                Showing {tasks.length} of {pagination.totalTasks} task{pagination.totalTasks !== 1 ? 's' : ''}
+              </p>
             </>
           )}
         </main>
       </div>
 
-      {/* ── Edit/Add Task Modal ── */}
+      {/* ── Add / Edit task modal ── */}
       {modal !== null && (
         <TaskModal
           task={modal === 'add' ? null : modal}
@@ -302,12 +302,14 @@ export default function Dashboard() {
         />
       )}
 
-      {/* ── Focus Mode Detail Modal (grid/list click) ── */}
-      {detailTask && (
+      {/* ── Focus Mode — always a modal, never inline ── */}
+      {focusState !== null && tasks.length > 0 && (
         <TaskDetailModal
-          task={detailTask}
-          onClose={() => setDetailTask(null)}
-          onEdit={handleEditFromDetail}
+          task={focusState.task}
+          tasks={tasks}
+          initialIndex={focusState.index ?? 0}
+          onClose={closeFocus}
+          onEdit={handleEditFromFocus}
           onDelete={handleDeleteRequest}
           onToggle={handleToggle}
           actionLoading={actionLoading}
